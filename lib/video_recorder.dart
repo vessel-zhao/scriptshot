@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:video_script/app_state.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +10,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:video_player/video_player.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
+import 'package:pixelfree/pixelfree.dart';
+import 'package:pixelfree/pixelfree_platform_interface.dart';
 
 class VideoRecorderPage extends StatefulWidget {
   const VideoRecorderPage({super.key});
@@ -37,10 +41,20 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
   XFile? _recordedVideo; // 保存录制的视频文件
   final GlobalKey _textContainerKey = GlobalKey(); // 用于获取文本容器大小
   final ScrollController _textScrollController = ScrollController(); // 文本滚动控制器
+  
+  // 美颜相关属性
+  late Pixelfree _pixelfree;
+  double _eyeStrength = 0.0;      // 大眼
+  double _faceThinning = 0.0;     // 瘦脸
+  double _faceWhiten = 0.0;       // 美白
+  double _faceBlur = 0.0;         // 磨皮
+  bool _beautyPanelOpen = false;  // 美颜面板是否打开
+  int? _beautyTextureId; // 美颜处理后的纹理ID
 
   @override
   void initState() {
     super.initState();
+    _initializePixelfree();
     _initializeCamera();
   }
 
@@ -54,6 +68,16 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
     super.dispose();
   }
 
+  Future<void> _initializePixelfree() async {
+    try {
+      _pixelfree = Pixelfree();
+      // 初始化Pixelfree SDK (需要license文件)
+      // await _pixelfree.createWithLic('path/to/license.lic');
+    } catch (e) {
+      print('Pixelfree初始化失败: $e');
+    }
+  }
+
   Future<void> _initializeCamera() async {
     try {
       _cameras = await availableCameras();
@@ -63,6 +87,12 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
           ResolutionPreset.high,
         );
         await _controller?.initialize();
+        
+        // 监听相机帧数据
+        _controller?.startImageStream((CameraImage image) async {
+          await _processBeautyEffect(image);
+        });
+        
         setState(() {
           _cameraInitialized = true;
         });
@@ -71,6 +101,45 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
       // 相机初始化失败处理
       print('相机初始化失败: $e');
     }
+  }
+
+  Future<void> _processBeautyEffect(CameraImage image) async {
+    try {
+      // 将CameraImage转换为Uint8List
+      final Uint8List imageData = _cameraImageToUint8List(image);
+      
+      // 使用pixelfree处理图像
+      final int textureId = await _pixelfree.processWithImage(
+        imageData,
+        image.width,
+        image.height,
+      );
+      
+      // 更新纹理ID
+      setState(() {
+        _beautyTextureId = textureId;
+      });
+    } catch (e) {
+      print('美颜处理失败: $e');
+    }
+  }
+
+  Uint8List _cameraImageToUint8List(CameraImage image) {
+    // 这里需要根据图像格式进行转换
+    // 简化处理，实际项目中需要根据具体的图像格式进行转换
+    if (image.planes.length == 1) {
+      // NV21 or other single plane format
+      return image.planes[0].bytes;
+    } else if (image.planes.length == 3) {
+      // YUV420 format
+      // 合并所有平面数据
+      final BytesBuilder allBytes = BytesBuilder();
+      for (final Plane plane in image.planes) {
+        allBytes.add(plane.bytes);
+      }
+      return allBytes.toBytes();
+    }
+    return Uint8List(0);
   }
 
   void _startCountdown(int seconds) {
@@ -242,6 +311,144 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
     });
   }
 
+  void _showBeautyPanel() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              height: 300,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    '美颜设置',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 大眼调节
+                          _buildBeautySlider(
+                            label: '大眼',
+                            value: _eyeStrength,
+                            onChanged: (value) {
+                              setState(() {
+                                _eyeStrength = value;
+                              });
+                              _pixelfree.pixelFreeSetBeautyFilterParam(
+                                  PFBeautyFiterType.eyeStrength, value);
+                            },
+                          ),
+                          // 瘦脸调节
+                          _buildBeautySlider(
+                            label: '瘦脸',
+                            value: _faceThinning,
+                            onChanged: (value) {
+                              setState(() {
+                                _faceThinning = value;
+                              });
+                              _pixelfree.pixelFreeSetBeautyFilterParam(
+                                  PFBeautyFiterType.faceThinning, value);
+                            },
+                          ),
+                          // 美白调节
+                          _buildBeautySlider(
+                            label: '美白',
+                            value: _faceWhiten,
+                            onChanged: (value) {
+                              setState(() {
+                                _faceWhiten = value;
+                              });
+                              _pixelfree.pixelFreeSetBeautyFilterParam(
+                                  PFBeautyFiterType.faceWhitenStrength, value);
+                            },
+                          ),
+                          // 磨皮调节
+                          _buildBeautySlider(
+                            label: '磨皮',
+                            value: _faceBlur,
+                            onChanged: (value) {
+                              setState(() {
+                                _faceBlur = value;
+                              });
+                              _pixelfree.pixelFreeSetBeautyFilterParam(
+                                  PFBeautyFiterType.faceBlurStrength, value);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('关闭'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _resetBeautySettings() {
+    setState(() {
+      _eyeStrength = 0.0;
+      _faceThinning = 0.0;
+      _faceWhiten = 0.0;
+      _faceBlur = 0.0;
+    });
+    
+    // 重置美颜参数
+    _pixelfree.pixelFreeSetBeautyFilterParam(PFBeautyFiterType.eyeStrength, 0.0);
+    _pixelfree.pixelFreeSetBeautyFilterParam(PFBeautyFiterType.faceThinning, 0.0);
+    _pixelfree.pixelFreeSetBeautyFilterParam(PFBeautyFiterType.faceWhitenStrength, 0.0);
+    _pixelfree.pixelFreeSetBeautyFilterParam(PFBeautyFiterType.faceBlurStrength, 0.0);
+  }
+
+  Widget _buildBeautySlider({
+    required String label,
+    required double value,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 50,
+          child: Text(label, style: const TextStyle(fontSize: 14)),
+        ),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: 0.0,
+            max: 1.0,
+            divisions: 100,
+            label: value.toStringAsFixed(2),
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(
+          width: 40,
+          child: Text(
+            '${(value * 100).toInt()}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -255,6 +462,16 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
         backgroundColor: Colors.transparent, // AppBar 透明
         elevation: 0, // 移除阴影
         actions: [
+          // 美颜设置按钮
+          IconButton(
+            icon: const Icon(Icons.face, color: Colors.white),
+            onPressed: _showBeautyPanel,
+          ),
+          // 重置美颜按钮
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _resetBeautySettings,
+          ),
           // 视频分辨率选择
           PopupMenuButton<String>(
             icon: const Icon(Icons.settings, color: Colors.white),
@@ -286,7 +503,9 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
               child: SizedBox(
                 width: _controller!.value.previewSize!.height, // 使用预览尺寸的宽高比
                 height: _controller!.value.previewSize!.width, // 使用预览尺寸的宽高比
-                child: CameraPreview(_controller!),
+                child: _beautyTextureId != null
+                    ? Texture(textureId: _beautyTextureId!)
+                    : CameraPreview(_controller!),
               ),
             ),
           )
@@ -483,6 +702,30 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
                                   ),
                                 ],
                               ),
+                              // 视频比例选择
+                              // Row(
+                              //   mainAxisSize: MainAxisSize.min,
+                              //   children: [
+                              //     const Text('比例:', style: TextStyle(color: Colors.white)),
+                              //     DropdownButton<String>(
+                              //       value: appState.videoAspectRatio,
+                              //       dropdownColor: Colors.black87, // 下拉菜单背景色
+                              //       style: const TextStyle(color: Colors.white), // 选项文字颜色
+                              //       icon: const Icon(Icons.arrow_drop_down, color: Colors.white), // 下拉图标颜色
+                              //       items: const [
+                              //         DropdownMenuItem(value: '16:9', child: Text('16:9', style: TextStyle(color: Colors.white))),
+                              //         DropdownMenuItem(value: '16:10', child: Text('16:10', style: TextStyle(color: Colors.white))),
+                              //         DropdownMenuItem(value: '4:3', child: Text('4:3', style: TextStyle(color: Colors.white))),
+                              //         DropdownMenuItem(value: '1:1', child: Text('1:1', style: TextStyle(color: Colors.white))),
+                              //       ],
+                              //       onChanged: (value) {
+                              //         if (value != null) {
+                              //           appState.setVideoAspectRatio(value);
+                              //         }
+                              //       },
+                              //     ),
+                              //   ],
+                              // ),
                               // 文字大小控制
                               Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -682,6 +925,15 @@ class _VideoPreviewPageState extends State<VideoPreviewPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('视频预览'),
+        // actions: [
+        //   // 删除按钮
+        //   IconButton(
+        //     icon: const Icon(Icons.delete),
+        //     onPressed: () {
+        //       _confirmDeleteVideo(context);
+        //     },
+        //   ),
+        // ],
       ),
       body: Center(
         child: _videoController.value.isInitialized
@@ -713,5 +965,49 @@ class _VideoPreviewPageState extends State<VideoPreviewPage> {
         ),
       ),
     );
+  }
+
+  void _confirmDeleteVideo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('确认删除'),
+          content: const Text('确定要删除这个视频吗？\n\n注意：此操作只会删除应用内部的视频文件，如果视频已保存到系统相册，需要您手动从相册中删除。'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteVideo(context);
+              },
+              child: const Text('删除', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteVideo(BuildContext context) {
+    try {
+      if (widget.videoFile.existsSync()) {
+        // 删除应用内部的文件
+        widget.videoFile.deleteSync();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('视频已从应用中删除')),
+        );
+        Navigator.of(context).pop(); // 返回上一页
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('删除失败')),
+      );
+    }
   }
 }

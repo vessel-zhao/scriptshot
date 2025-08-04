@@ -16,6 +16,8 @@ class AppState with ChangeNotifier {
   double _textSize = 16.0;
   // 视频分辨率
   String _videoResolution = '1080P';
+  // 视频宽高比
+  String _videoAspectRatio = '16:9';
   // 倒计时
   int _countdown = 3;
 
@@ -26,6 +28,7 @@ class AppState with ChangeNotifier {
   double get scrollSpeed => _scrollSpeed;
   double get textSize => _textSize;
   String get videoResolution => _videoResolution;
+  String get videoAspectRatio => _videoAspectRatio;
   int get countdown => _countdown;
 
   // Setters
@@ -56,6 +59,11 @@ class AppState with ChangeNotifier {
 
   void setVideoResolution(String resolution) {
     _videoResolution = resolution;
+    notifyListeners();
+  }
+
+  void setVideoAspectRatio(String aspectRatio) {
+    _videoAspectRatio = aspectRatio;
     notifyListeners();
   }
 

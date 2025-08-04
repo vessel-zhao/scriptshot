@@ -312,6 +312,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.3.0"
+  pixelfree:
+    dependency: "direct main"
+    description:
+      name: pixelfree
+      sha256: "85c938103e9809889d3b843ffc99a03d1a6a2f667390ec09856ce0bcc0b7cd13"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.4.17"
   platform:
     dependency: transitive
     description:
