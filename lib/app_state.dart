@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 
 class AppState with ChangeNotifier {
   // 脚本内容
@@ -9,7 +8,7 @@ class AppState with ChangeNotifier {
   // 字体
   String _selectedFont = 'Default';
   // 文本颜色
-  Color _textColor = Colors.white; // 将默认颜色改为白色
+  String _textColor = '#FFFFFF'; // 将默认颜色改为白色字符串代码
   // 滚动速度
   double _scrollSpeed = 4.0;
   // 文字大小
@@ -21,10 +20,25 @@ class AppState with ChangeNotifier {
   // 倒计时
   int _countdown = 3;
 
+  // 颜色映射
+  static final Map<String, Color> _colorMap = {
+    '#000000': Colors.black,
+    '#FFFFFF': Colors.white,
+    '#FF0000': Colors.red,
+    '#0000FF': Colors.blue,
+    '#008000': Colors.green,
+    '#800080': Colors.purple,
+    '#FFA500': Colors.orange,
+    '#FFC0CB': Colors.pink,
+    '#008080': Colors.teal,
+    '#4B0082': Colors.indigo,
+  };
+
   // Getters
   String get scriptContent => _scriptContent;
   String get selectedFont => _selectedFont;
-  Color get textColor => _textColor;
+  String get textColor => _textColor; // 返回颜色代码字符串
+  Color get textColorValue => _colorMap[_textColor] ?? Colors.white; // 获取实际颜色值
   double get scrollSpeed => _scrollSpeed;
   double get textSize => _textSize;
   String get videoResolution => _videoResolution;
@@ -42,8 +56,8 @@ class AppState with ChangeNotifier {
     notifyListeners();
   }
 
-  void setTextColor(Color color) {
-    _textColor = color;
+  void setTextColor(String colorCode) {
+    _textColor = colorCode;
     notifyListeners();
   }
 

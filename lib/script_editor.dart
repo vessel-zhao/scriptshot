@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_script/app_state.dart';
 import 'package:provider/provider.dart';
-import 'package:file_picker/file_picker.dart'; // 导入 file_picker
+import 'package:file_picker/file_picker.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart';
 
 class ScriptEditorPage extends StatefulWidget {
   const ScriptEditorPage({super.key});
@@ -14,14 +15,30 @@ class ScriptEditorPage extends StatefulWidget {
 
 class _ScriptEditorPageState extends State<ScriptEditorPage> {
   late TextEditingController _textController;
-  final List<Color> _availableColors = [
-    Colors.black,
-    Colors.white,  // 添加白色选项
-    Colors.red,
-    Colors.blue,
-    Colors.green,
-    Colors.purple,
-    Colors.orange,
+  final Map<String, Color> _colorMap = {
+    '#000000': Colors.black,
+    '#FFFFFF': Colors.white,
+    '#FF0000': Colors.red,
+    '#0000FF': Colors.blue,
+    '#008000': Colors.green,
+    '#800080': Colors.purple,
+    '#FFA500': Colors.orange,
+    '#FFC0CB': Colors.pink,
+    '#008080': Colors.teal,
+    '#4B0082': Colors.indigo,
+  };
+
+  final List<String> _colorCodes = [
+    '#000000',
+    '#FFFFFF',
+    '#FF0000',
+    '#0000FF',
+    '#008000',
+    '#800080',
+    '#FFA500',
+    '#FFC0CB',
+    '#008080',
+    '#4B0082',
   ];
 
   @override
@@ -59,22 +76,22 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
           appState.setScriptContent(content);
           _textController.text = content;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('脚本文件已成功加载！')),
-          );
+          if (mounted) {
+            TDToast.showText('脚本文件已成功加载！', context: context);
+          }
         }
       } else {
         // 用户取消了文件选择
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('文件选择已取消。')),
-        );
+        if (mounted) {
+          TDToast.showText('文件选择已取消。', context: context);
+        }
       }
     } catch (e) {
       // 处理文件加载错误
       print('加载文件失败: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加载文件失败: $e')),
-      );
+      if (mounted) {
+        TDToast.showText('加载文件失败: $e', context: context);
+      }
     }
   }
 
@@ -96,20 +113,23 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
       );
     }
 
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('脚本编辑器'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () {
+      appBar: TDNavBar(
+        title: '脚本编辑器',
+        titleFontWeight: FontWeight.w600,
+        screenAdaptation: true,
+        useDefaultBack: false,
+        rightBarItems: [
+          TDNavBarItem(
+            action: () {
               appState.setScriptContent(_textController.text);
-              appState.saveScript(); // 假设这个方法将内容保存到本地存储
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('脚本已保存')),
-              );
+              appState.saveScript();
+              if (mounted) {
+                TDToast.showText('脚本已保存', context: context);
+              }
             },
+            icon: Icons.save,
+            iconSize: 24,
           ),
         ],
       ),
@@ -117,78 +137,155 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
         children: [
           // 文本样式控制区域
           Container(
+            margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // 字体选择
-                DropdownButton<String>(
-                  value: appState.selectedFont,
-                  items: const [
-                    DropdownMenuItem(value: 'Default', child: Text('默认字体')),
-                    DropdownMenuItem(value: 'serif', child: Text('Serif')),
-                    DropdownMenuItem(value: 'monospace', child: Text('Monospace')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      appState.setSelectedFont(value);
-                    }
-                  },
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                // 文本颜色选择
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '文本样式设置',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Text('颜色: '),
-                    DropdownButton<Color>(
-                      value: appState.textColor,
-                      items: _availableColors.map((color) {
-                        return DropdownMenuItem(
-                          value: color,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: color == Colors.white
-                                  ? Border.all(color: Colors.grey, width: 1)
-                                  : null,
+                    // 字体选择
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '字体',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          appState.setTextColor(value);
-                        }
-                      },
+                          const SizedBox(height: 8),
+                          TDDropdownMenu(
+                            items: [
+                              TDDropdownItem(
+                                options: [
+                                  TDDropdownItemOption(
+                                    label: '默认字体', 
+                                    value: 'Default',
+                                    selected: appState.selectedFont == 'Default',
+                                  ),
+                                  TDDropdownItemOption(
+                                    label: 'Serif', 
+                                    value: 'serif',
+                                    selected: appState.selectedFont == 'serif',
+                                  ),
+                                  TDDropdownItemOption(
+                                    label: 'Monospace', 
+                                    value: 'monospace',
+                                    selected: appState.selectedFont == 'monospace',
+                                  ),
+                                ],
+                                onChange: (value) {
+                                  appState.setSelectedFont(value[0].toString());
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // 文本颜色选择
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '颜色',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TDDropdownMenu(
+                            items: [
+                              TDDropdownItem(
+                                options: _colorCodes.map((colorCode) {
+                                  final color = _colorMap[colorCode]!;
+                                  return TDDropdownItemOption(
+                                    label: _getColorName(color),
+                                    value: colorCode,
+                                    selected: appState.textColor == colorCode,
+                                  );
+                                }).toList(),
+                                onChange: (value) {
+                                  // 直接使用value作为Color值
+                                  if (value is List<String>) {
+                                    // 如果是多选情况，取第一个值
+                                    if (value.isNotEmpty) {
+                                      appState.setTextColor(value[0]);
+                                    }
+                                  } else if (value is String) {
+                                    // 如果是单选情况
+                                    appState.setTextColor(value);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 20),
                 // 操作按钮
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.undo),
-                      onPressed: () {
-                        // 撤销操作：TextField 内部应该有自带的撤销/重做功能，
-                        // 如果要实现更复杂的历史记录，需要额外的逻辑
-                        // _textController.undo(); // 假设有这样的方法
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.redo),
-                      onPressed: () {
-                        // 重做操作
-                        // _textController.redo(); // 假设有这样的方法
-                      },
-                    ),
-                    TextButton(
-                      onPressed: () async {
+                    // TDButton(
+                    //   text: '撤销',
+                    //   icon: Icons.undo,
+                    //   size: TDButtonSize.small,
+                    //   type: TDButtonType.outline,
+                    //   theme: TDButtonTheme.primary,
+                    //   onTap: () {
+                    //     // 撤销操作
+                    //   },
+                    // ),
+                    // TDButton(
+                    //   text: '重做',
+                    //   icon: Icons.redo,
+                    //   size: TDButtonSize.small,
+                    //   type: TDButtonType.outline,
+                    //   theme: TDButtonTheme.primary,
+                    //   onTap: () {
+                    //     // 重做操作
+                    //   },
+                    // ),
+                    TDButton(
+                      text: '加载文件',
+                      icon: Icons.upload_file,
+                      size: TDButtonSize.small,
+                      theme: TDButtonTheme.primary,
+                      onTap: () async {
                         // 调用新的文件加载方法
                         await _loadScriptFromFile();
                       },
-                      child: const Text('加载'),
                     ),
                   ],
                 ),
@@ -198,15 +295,31 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
           // 文本编辑区域
           Expanded(
             child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: TextField(
                 controller: _textController,
                 maxLines: null,
                 expands: true,
                 textAlign: TextAlign.start,
                 decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                  border: InputBorder.none,
                   hintText: '在此输入您的脚本内容...',
+                ),
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.5,
                 ),
                 onChanged: (value) {
                   // 在文本更改时立即更新 AppState
@@ -218,5 +331,30 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
         ],
       ),
     );
+  }
+
+  String _getColorName(Color color) {
+    if (color == Colors.black) return '黑色';
+    if (color == Colors.white) return '白色';
+    if (color == Colors.red) return '红色';
+    if (color == Colors.blue) return '蓝色';
+    if (color == Colors.green) return '绿色';
+    if (color == Colors.purple) return '紫色';
+    if (color == Colors.orange) return '橙色';
+    if (color == Colors.pink) return '粉色';
+    if (color == Colors.teal) return '蓝绿色';
+    if (color == Colors.indigo) return '靛蓝色';
+    return '其他';
+  }
+
+  String _getColorCode(Color color) {
+    // 查找与给定颜色匹配的颜色代码
+    for (var entry in _colorMap.entries) {
+      if (entry.value.value == color.value) {
+        return entry.key;
+      }
+    }
+    // 如果没有找到匹配项，默认返回黑色
+    return '#000000';
   }
 }
