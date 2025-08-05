@@ -13,7 +13,7 @@ class ScriptEditorPage extends StatefulWidget {
   State<ScriptEditorPage> createState() => _ScriptEditorPageState();
 }
 
-class _ScriptEditorPageState extends State<ScriptEditorPage> {
+class _ScriptEditorPageState extends State<ScriptEditorPage> with WidgetsBindingObserver {
   late TextEditingController _textController;
   final Map<String, Color> _colorMap = {
     '#000000': Colors.black,
@@ -40,6 +40,8 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
     '#008080',
     '#4B0082',
   ];
+  
+  bool _isKeyboardVisible = false;
 
   @override
   void initState() {
@@ -47,12 +49,26 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
     _textController = TextEditingController();
     // 首次进入页面时加载已保存的脚本内容
     _textController.text = Provider.of<AppState>(context, listen: false).scriptContent;
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     _textController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+  
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    final bottomInset = WidgetsBinding.instance.window.viewInsets.bottom;
+    final newValue = bottomInset > 0;
+    if (newValue != _isKeyboardVisible) {
+      setState(() {
+        _isKeyboardVisible = newValue;
+      });
+    }
   }
 
   // 新增方法：从文件系统加载脚本
@@ -129,6 +145,16 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
               }
             },
             icon: Icons.save,
+            padding: const EdgeInsets.only(right: 16),
+            iconSize: 24,
+          ),
+          TDNavBarItem(
+            action: () async {
+              // 调用文件加载方法
+              await _loadScriptFromFile();
+            },
+            icon: Icons.upload_file,
+            padding: const EdgeInsets.only(right: 16),
             iconSize: 24,
           ),
         ],
@@ -136,161 +162,151 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
       body: Column(
         children: [
           // 文本样式控制区域
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '文本样式设置',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    // 字体选择
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '字体',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              return SizeTransition(
+                sizeFactor: animation,
+                child: child,
+              );
+            },
+            child: !_isKeyboardVisible // 当键盘未弹出时才显示控制区域
+                ? Container(
+                    key: const ValueKey('control_panel'),
+                    margin: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '文本样式设置',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
                           ),
-                          const SizedBox(height: 8),
-                          TDDropdownMenu(
-                            items: [
-                              TDDropdownItem(
-                                options: [
-                                  TDDropdownItemOption(
-                                    label: '默认字体', 
-                                    value: 'Default',
-                                    selected: appState.selectedFont == 'Default',
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            // 字体选择
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '字体',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  TDDropdownItemOption(
-                                    label: 'Serif', 
-                                    value: 'serif',
-                                    selected: appState.selectedFont == 'serif',
-                                  ),
-                                  TDDropdownItemOption(
-                                    label: 'Monospace', 
-                                    value: 'monospace',
-                                    selected: appState.selectedFont == 'monospace',
+                                  const SizedBox(height: 8),
+                                  TDDropdownMenu(
+                                    items: [
+                                      TDDropdownItem(
+                                        options: [
+                                          TDDropdownItemOption(
+                                            label: '默认字体', 
+                                            value: 'Default',
+                                            selected: appState.selectedFont == 'Default',
+                                          ),
+                                          TDDropdownItemOption(
+                                            label: 'Serif', 
+                                            value: 'serif',
+                                            selected: appState.selectedFont == 'serif',
+                                          ),
+                                          TDDropdownItemOption(
+                                            label: 'Monospace', 
+                                            value: 'monospace',
+                                            selected: appState.selectedFont == 'monospace',
+                                          ),
+                                        ],
+                                        onChange: (value) {
+                                          appState.setSelectedFont(value[0].toString());
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
-                                onChange: (value) {
-                                  appState.setSelectedFont(value[0].toString());
-                                },
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // 文本颜色选择
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '颜色',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          TDDropdownMenu(
-                            items: [
-                              TDDropdownItem(
-                                options: _colorCodes.map((colorCode) {
-                                  final color = _colorMap[colorCode]!;
-                                  return TDDropdownItemOption(
-                                    label: _getColorName(color),
-                                    value: colorCode,
-                                    selected: appState.textColor == colorCode,
-                                  );
-                                }).toList(),
-                                onChange: (value) {
-                                  // 直接使用value作为Color值
-                                  if (value is List<String>) {
-                                    // 如果是多选情况，取第一个值
-                                    if (value.isNotEmpty) {
-                                      appState.setTextColor(value[0]);
-                                    }
-                                  } else if (value is String) {
-                                    // 如果是单选情况
-                                    appState.setTextColor(value);
-                                  }
-                                },
+                            const SizedBox(width: 16),
+                            // 文本颜色选择
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '颜色',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TDDropdownMenu(
+                                    labelBuilder: (context, label, isOpened, index) {
+                                      return Row(
+                                        children: [
+                                          Container(
+                                            width: 16,
+                                            height: 16,
+                                            decoration: BoxDecoration(
+                                              color: _colorMap[appState.textColor]!,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(_getColorName(_colorMap[appState.textColor]!)),
+                                        ],
+                                      );
+                                    },
+                                    items: [
+                                      TDDropdownItem(
+                                        options: _colorCodes.map((colorCode) {
+                                          final color = _colorMap[colorCode]!;
+                                          return TDDropdownItemOption(
+                                            label: _getColorName(color),
+                                            value: colorCode,
+                                            selected: appState.textColor == colorCode,
+                                          );
+                                        }).toList(),
+                                        onChange: (value) {
+                                          // 直接使用value作为Color值
+                                          if (value is List<String>) {
+                                            // 如果是多选情况，取第一个值
+                                            if (value.isNotEmpty) {
+                                              appState.setTextColor(value[0]);
+                                            }
+                                          } else if (value is String) {
+                                            // 如果是单选情况
+                                            appState.setTextColor(value);
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 20),
-                // 操作按钮
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // TDButton(
-                    //   text: '撤销',
-                    //   icon: Icons.undo,
-                    //   size: TDButtonSize.small,
-                    //   type: TDButtonType.outline,
-                    //   theme: TDButtonTheme.primary,
-                    //   onTap: () {
-                    //     // 撤销操作
-                    //   },
-                    // ),
-                    // TDButton(
-                    //   text: '重做',
-                    //   icon: Icons.redo,
-                    //   size: TDButtonSize.small,
-                    //   type: TDButtonType.outline,
-                    //   theme: TDButtonTheme.primary,
-                    //   onTap: () {
-                    //     // 重做操作
-                    //   },
-                    // ),
-                    TDButton(
-                      text: '加载文件',
-                      icon: Icons.upload_file,
-                      size: TDButtonSize.small,
-                      theme: TDButtonTheme.primary,
-                      onTap: () async {
-                        // 调用新的文件加载方法
-                        await _loadScriptFromFile();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('empty')),
           ),
           // 文本编辑区域
           Expanded(
@@ -317,8 +333,10 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> {
                   border: InputBorder.none,
                   hintText: '在此输入您的脚本内容...',
                 ),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
+                  fontFamily: appState.selectedFont,
+                  color: _colorMap[appState.textColor]!,
                   height: 1.5,
                 ),
                 onChanged: (value) {

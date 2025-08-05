@@ -907,19 +907,19 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
           TDNavBarItem(
             icon: Icons.face,
             iconSize: 24,
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 16),
             action: _showBeautyPanel,
           ),
           TDNavBarItem(
             icon: Icons.flip_camera_android,
             iconSize: 24,
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 16),
             action: _flipCamera,
           ),
           TDNavBarItem(
             icon: Icons.settings,
             iconSize: 24,
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 16),
             action: _showSettings,
           ),
         ],
