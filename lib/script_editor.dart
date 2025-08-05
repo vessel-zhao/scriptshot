@@ -336,7 +336,6 @@ class _ScriptEditorPageState extends State<ScriptEditorPage> with WidgetsBinding
                 style: TextStyle(
                   fontSize: 16,
                   fontFamily: appState.selectedFont,
-                  color: _colorMap[appState.textColor]!,
                   height: 1.5,
                 ),
                 onChanged: (value) {
