@@ -515,25 +515,25 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
         TDActionSheetItem(label: '重置美颜设置'),
       ],
       onSelected: (item, index) {
-        print(index);
-        switch (index) {
-          case 0:
-            Navigator.of(context).pop();
-            _showScrollSpeedSetting();
-            break;
-          case 1:
-            Navigator.of(context).pop();
-            _showTextSizeSetting();
-            break;
-          case 2:
-            Navigator.of(context).pop();
-            _showCountdownSetting();
-            break;
-          case 3:
-            Navigator.of(context).pop();
-            _resetBeautySettings();
-            break;
-        }
+        // 先关闭ActionSheet，再打开对应的设置面板
+        Navigator.of(context).pop();
+        // 使用addPostFrameCallback确保在下一帧执行，避免Navigator冲突
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          switch (index) {
+            case 0:
+              _showScrollSpeedSetting();
+              break;
+            case 1:
+              _showTextSizeSetting();
+              break;
+            case 2:
+              _showCountdownSetting();
+              break;
+            case 3:
+              _resetBeautySettings();
+              break;
+          }
+        });
       },
     );
   }
@@ -754,16 +754,19 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
           TDNavBarItem(
             icon: Icons.face,
             iconSize: 24,
+            padding: const EdgeInsets.only(right: 8),
             action: _showBeautyPanel,
           ),
           TDNavBarItem(
             icon: Icons.flip_camera_android,
             iconSize: 24,
+            padding: const EdgeInsets.only(right: 8),
             action: _flipCamera,
           ),
           TDNavBarItem(
             icon: Icons.settings,
             iconSize: 24,
+            padding: const EdgeInsets.only(right: 8),
             action: _showSettings,
           ),
         ],
@@ -1054,7 +1057,7 @@ class _VideoPreviewPageState extends State<VideoPreviewPage> {
       appBar: TDNavBar(
         title: '视频预览',
         titleFontWeight: FontWeight.w600,
-        screenAdaptation: false,
+        screenAdaptation: true,
         useDefaultBack: true,
       ),
       body: Center(

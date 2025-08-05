@@ -10,7 +10,7 @@ class AppState with ChangeNotifier {
   // 文本颜色
   String _textColor = '#FFFFFF'; // 将默认颜色改为白色字符串代码
   // 滚动速度
-  double _scrollSpeed = 4.0;
+  double _scrollSpeed = 1.0;
   // 文字大小
   double _textSize = 16.0;
   // 视频分辨率
