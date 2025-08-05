@@ -13,6 +13,137 @@ import 'package:pixelfree/pixelfree.dart';
 import 'package:pixelfree/pixelfree_platform_interface.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 
+// 速度预览组件
+class SpeedPreviewWidget extends StatefulWidget {
+  final double initialSpeed;
+
+  const SpeedPreviewWidget({Key? key, required this.initialSpeed})
+    : super(key: key);
+
+  @override
+  State<SpeedPreviewWidget> createState() => _SpeedPreviewWidgetState();
+}
+
+class _SpeedPreviewWidgetState extends State<SpeedPreviewWidget>
+    with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  late AnimationController _animationController;
+  Timer? _resetTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(vsync: this);
+    _startScrolling();
+  }
+
+  @override
+  void didUpdateWidget(covariant SpeedPreviewWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSpeed != widget.initialSpeed) {
+      _resetAndRestartScrolling();
+    }
+  }
+
+  void _startScrolling() {
+    // 取消之前的重置定时器（如果有的话）
+    _resetTimer?.cancel();
+
+    // 在短暂延迟后开始滚动，让用户看到初始状态
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(
+            milliseconds: (5000 ~/ widget.initialSpeed).toInt(),
+          ),
+          curve: Curves.linear,
+        );
+
+        // 滚动完成后重置位置
+        _resetTimer = Timer(
+          Duration(milliseconds: (5000 ~/ widget.initialSpeed).toInt()),
+          () {
+            if (mounted) {
+              _resetAndRestartScrolling();
+            }
+          },
+        );
+      }
+    });
+  }
+
+  void _resetAndRestartScrolling() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+      _startScrolling();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animationController.dispose();
+    _resetTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '这是滚动速度预览文本，用于展示不同速度下的滚动效果。调整滑块可以改变滚动速度，预览会自动重新开始滚动。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '预览文本会根据设定的速度持续滚动，滚动完成后会自动回到初始位置重新开始。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '通过这个预览功能，您可以直观地感受到不同速度设置对实际使用效果的影响。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const Text(
+            '这是滚动速度预览文本，用于展示不同速度下的滚动效果。调整滑块可以改变滚动速度，预览会自动重新开始滚动。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '预览文本会根据设定的速度持续滚动，滚动完成后会自动回到初始位置重新开始。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '通过这个预览功能，您可以直观地感受到不同速度设置对实际使用效果的影响。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const Text(
+            '这是滚动速度预览文本，用于展示不同速度下的滚动效果。调整滑块可以改变滚动速度，预览会自动重新开始滚动。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '预览文本会根据设定的速度持续滚动，滚动完成后会自动回到初始位置重新开始。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            '通过这个预览功能，您可以直观地感受到不同速度设置对实际使用效果的影响。',
+            style: TextStyle(fontSize: 16, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class VideoRecorderPage extends StatefulWidget {
   const VideoRecorderPage({super.key});
 
@@ -325,87 +456,97 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
   }
 
   void _showBeautyPanel() {
-    Navigator.of(context).push(TDSlidePopupRoute(
-      modalBarrierColor: Colors.black.withOpacity(0.5),
-      slideTransitionFrom: SlideTransitionFrom.bottom,
-      builder: (context) {
-        return TDPopupBottomDisplayPanel(
-          title: '美颜设置',
-          closeClick: () {
-            Navigator.maybePop(context);
-          },
-          child: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return Container(
-                height: 400,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // 大眼调节
-                            _buildBeautySlider(
-                              label: '大眼',
-                              value: _eyeStrength,
-                              onChanged: (value) {
-                                setState(() {
-                                  _eyeStrength = value;
-                                });
-                                _pixelfree.pixelFreeSetBeautyFilterParam(
-                                    PFBeautyFiterType.eyeStrength, value);
-                              },
-                            ),
-                            // 瘦脸调节
-                            _buildBeautySlider(
-                              label: '瘦脸',
-                              value: _faceThinning,
-                              onChanged: (value) {
-                                setState(() {
-                                  _faceThinning = value;
-                                });
-                                _pixelfree.pixelFreeSetBeautyFilterParam(
-                                    PFBeautyFiterType.faceThinning, value);
-                              },
-                            ),
-                            // 美白调节
-                            _buildBeautySlider(
-                              label: '美白',
-                              value: _faceWhiten,
-                              onChanged: (value) {
-                                setState(() {
-                                  _faceWhiten = value;
-                                });
-                                _pixelfree.pixelFreeSetBeautyFilterParam(
-                                    PFBeautyFiterType.faceWhitenStrength, value);
-                              },
-                            ),
-                            // 磨皮调节
-                            _buildBeautySlider(
-                              label: '磨皮',
-                              value: _faceBlur,
-                              onChanged: (value) {
-                                setState(() {
-                                  _faceBlur = value;
-                                });
-                                _pixelfree.pixelFreeSetBeautyFilterParam(
-                                    PFBeautyFiterType.faceBlurStrength, value);
-                              },
-                            ),
-                          ],
+    Navigator.of(context).push(
+      TDSlidePopupRoute(
+        modalBarrierColor: Colors.black.withOpacity(0.5),
+        slideTransitionFrom: SlideTransitionFrom.bottom,
+        builder: (context) {
+          return TDPopupBottomDisplayPanel(
+            title: '美颜设置',
+            closeClick: () {
+              Navigator.maybePop(context);
+            },
+            child: StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return Container(
+                  height: 400,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 大眼调节
+                              _buildBeautySlider(
+                                label: '大眼',
+                                value: _eyeStrength,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _eyeStrength = value;
+                                  });
+                                  _pixelfree.pixelFreeSetBeautyFilterParam(
+                                    PFBeautyFiterType.eyeStrength,
+                                    value,
+                                  );
+                                },
+                              ),
+                              // 瘦脸调节
+                              _buildBeautySlider(
+                                label: '瘦脸',
+                                value: _faceThinning,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _faceThinning = value;
+                                  });
+                                  _pixelfree.pixelFreeSetBeautyFilterParam(
+                                    PFBeautyFiterType.faceThinning,
+                                    value,
+                                  );
+                                },
+                              ),
+                              // 美白调节
+                              _buildBeautySlider(
+                                label: '美白',
+                                value: _faceWhiten,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _faceWhiten = value;
+                                  });
+                                  _pixelfree.pixelFreeSetBeautyFilterParam(
+                                    PFBeautyFiterType.faceWhitenStrength,
+                                    value,
+                                  );
+                                },
+                              ),
+                              // 磨皮调节
+                              _buildBeautySlider(
+                                label: '磨皮',
+                                value: _faceBlur,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _faceBlur = value;
+                                  });
+                                  _pixelfree.pixelFreeSetBeautyFilterParam(
+                                    PFBeautyFiterType.faceBlurStrength,
+                                    value,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
-          ),
-        );
-      },
-    ));
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _resetBeautySettings() {
@@ -554,7 +695,7 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
             child: StatefulBuilder(
               builder: (BuildContext context, StateSetter setState) {
                 return Container(
-                  height: 200,
+                  height: 300,
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
@@ -562,8 +703,8 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
                       TDSlider(
                         sliderThemeData: TDSliderThemeData(
                           context: context,
-                          min: 1,
-                          max: 10,
+                          min: 0.1,
+                          max: 3.0,
                         ),
                         value: appState.scrollSpeed,
                         onChanged: (value) {
@@ -573,6 +714,18 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
                       ),
                       const SizedBox(height: 20),
                       Text('当前速度: ${appState.scrollSpeed.toStringAsFixed(1)}x'),
+                      const SizedBox(height: 20),
+                      Container(
+                        height: 80,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: SpeedPreviewWidget(
+                          initialSpeed: appState.scrollSpeed,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -871,10 +1024,50 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
             ),
 
           // 4. 可拖动和调整大小的脚本文本框 (浮动在视频之上)
-          // 始终显示文本框容器，即使脚本内容为空，这样用户也能看到并操作它
           if (!_showCountdown && appState.scriptContent.isNotEmpty)
             Stack(
               children: [
+                // 在文本框上方添加滚动速度显示
+                Positioned(
+                  left:
+                      (screenWidth / 2 - _containerWidth / 2).clamp(
+                        0.0,
+                        screenWidth - _containerWidth,
+                      ) +
+                      _textPosition.dx,
+                  top: 120 + _textPosition.dy,
+                  child: GestureDetector(
+                    onTap: _showScrollSpeedSetting,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.speed,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${appState.scrollSpeed.toStringAsFixed(1)}x',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Positioned(
                   left:
                       (screenWidth / 2 - _containerWidth / 2).clamp(
@@ -958,6 +1151,63 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
                               ),
                             ),
                           ),
+                          // 字体大小调整按钮
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _textScale = (_textScale - 0.1).clamp(
+                                        0.5,
+                                        3.0,
+                                      );
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: const Icon(
+                                      Icons.remove,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _textScale = (_textScale + 0.1).clamp(
+                                        0.5,
+                                        3.0,
+                                      );
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -979,38 +1229,45 @@ class _VideoRecorderPageState extends State<VideoRecorderPage>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 录制按钮
-                    GestureDetector(
-                      onTap: () {
-                        if (_isRecording) {
-                          _stopRecording();
-                        } else if (_cameraInitialized) {
-                          _startCountdown(appState.countdown);
-                        } else {
-                          if (mounted) {
-                            TDToast.showText('相机初始化中，请稍后...', context: context);
+                    // 录制按钮 (仅在非倒计时期间显示)
+                    if (!_showCountdown)
+                      GestureDetector(
+                        onTap: () {
+                          if (_isRecording) {
+                            _stopRecording();
+                          } else if (_cameraInitialized) {
+                            _startCountdown(appState.countdown);
+                          } else {
+                            if (mounted) {
+                              TDToast.showText('相机初始化中，请稍后...', context: context);
+                            }
                           }
-                        }
-                      },
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: _isRecording ? Colors.red : Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.red, width: 2),
-                        ),
-                        child: _isRecording
-                            ? const Icon(Icons.stop, color: Colors.white)
-                            : Container(
-                                margin: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
+                        },
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: _isRecording ? Colors.red : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.red,
+                              width: 2,
+                            ),
+                          ),
+                          child: _isRecording
+                              ? const Icon(
+                                  Icons.stop,
+                                  color: Colors.white,
+                                )
+                              : Container(
+                                  margin: const EdgeInsets.all(12),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
